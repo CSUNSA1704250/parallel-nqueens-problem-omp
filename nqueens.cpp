@@ -131,6 +131,40 @@ int main(int argc, char *argv[])
 
     cout << "Time: " << total_time.count() << "ms" << endl;
 
+
+
+		int cantidad=n;
+		vector<vector<int>> matriz(cantidad);
+		for(int i=0;i<cantidad;i++){
+			matriz[i].reserve(cantidad);
+		}
+
+		for(int i=0;i<cantidad;i++){
+			matriz[queens[i]][i]=1;
+		}
+
+
+		string salida="digraph structs {\n";
+
+		salida=salida+"    node [shape=record];\n     struct3 [label=\"{";
+
+		for(int i=0;i<cantidad;i++){
+			salida=salida+" { ";
+			for(int j=0;j<(cantidad-1);j++){
+				salida=salida+to_string(matriz[i][j])+"|";
+			}
+			if(i==(cantidad-1)){
+				salida=salida+to_string(matriz[i][cantidad-1])+" } ";
+			}else{
+				salida=salida+to_string(matriz[i][cantidad-1])+" } |";
+			}
+			
+
+		}
+
+		salida=salida+"}\"];\n }";
+		cout<<salida<<endl;
+
     delete[] queens;
     return 0;
 }
