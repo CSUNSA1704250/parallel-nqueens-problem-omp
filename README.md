@@ -3,7 +3,7 @@
 - Diego Portocarrero Espirilla
 
 ## Compile
-g++ -o nqueens nqueens.cpp -fopenmp
+g++ -o nqueens nqueens.cpp -fopenmp -O2
 
 ## Execute
 ./nqueens -problemType [all,find] -N <num_queens>

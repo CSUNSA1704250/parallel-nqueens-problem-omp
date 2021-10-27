@@ -23,6 +23,44 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option)
     return std::find(begin, end, option) != end;
 }
 
+void generate_dot(int *&queens)
+{
+    int cantidad = N;
+    vector<vector<int>> matriz(cantidad);
+    for (int i = 0; i < cantidad; i++)
+    {
+        matriz[i].reserve(cantidad);
+    }
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        matriz[queens[i]][i] = 1;
+    }
+    string salida = "digraph structs {\n";
+
+    salida = salida + "    node [shape=record];\n     struct3 [label=\"{";
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        salida = salida + " { ";
+        for (int j = 0; j < (cantidad - 1); j++)
+        {
+            salida = salida + to_string(matriz[i][j]) + "|";
+        }
+        if (i == (cantidad - 1))
+        {
+            salida = salida + to_string(matriz[i][cantidad - 1]) + " } ";
+        }
+        else
+        {
+            salida = salida + to_string(matriz[i][cantidad - 1]) + " } |";
+        }
+    }
+
+    salida = salida + "}\"];\n }";
+    cout << salida << endl;
+}
+
 bool is_safe(int *&queens, int &row, int &col)
 {
     for (int i = 0; i < col; i++)
@@ -58,6 +96,7 @@ void try_queen(int *&queens, int col, int &solutions_count)
     {
         ++solutions_count;
         /* print_solution(queens); */
+        generate_dot(queens);
         return;
     }
 
@@ -93,6 +132,8 @@ int find_all_solutions(int *&queens)
     }
     return num_solutions;
 }
+
+
 
 vector<int> find_a_solution(vector<int> queens)
 {
@@ -130,40 +171,6 @@ int main(int argc, char *argv[])
     chrono::duration<double, milli> total_time = timer_end - timer_start;
 
     cout << "Time: " << total_time.count() << "ms" << endl;
-
-
-
-		int cantidad=n;
-		vector<vector<int>> matriz(cantidad);
-		for(int i=0;i<cantidad;i++){
-			matriz[i].reserve(cantidad);
-		}
-
-		for(int i=0;i<cantidad;i++){
-			matriz[queens[i]][i]=1;
-		}
-
-
-		string salida="digraph structs {\n";
-
-		salida=salida+"    node [shape=record];\n     struct3 [label=\"{";
-
-		for(int i=0;i<cantidad;i++){
-			salida=salida+" { ";
-			for(int j=0;j<(cantidad-1);j++){
-				salida=salida+to_string(matriz[i][j])+"|";
-			}
-			if(i==(cantidad-1)){
-				salida=salida+to_string(matriz[i][cantidad-1])+" } ";
-			}else{
-				salida=salida+to_string(matriz[i][cantidad-1])+" } |";
-			}
-			
-
-		}
-
-		salida=salida+"}\"];\n }";
-		cout<<salida<<endl;
 
     delete[] queens;
     return 0;
