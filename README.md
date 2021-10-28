@@ -10,3 +10,6 @@ g++ -o nqueens nqueens.cpp -fopenmp -O2
 
 ## Ejemplo de ejecución
 ./nqueens -problemType all -N 13
+
+## Generate solution plot
+dot -Tpng -O graph.dot
