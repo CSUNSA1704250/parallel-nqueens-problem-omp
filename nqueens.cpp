@@ -8,6 +8,8 @@ using namespace std;
 
 int N;
 
+bool found = false;
+
 char *get_cmd_option(char **begin, char **end, const std::string &option)
 {
     char **itr = find(begin, end, option);
@@ -29,7 +31,7 @@ void generate_dot(int *&queens)
     vector<vector<int>> matriz(cantidad);
     for (int i = 0; i < cantidad; i++)
     {
-        matriz[i].reserve(cantidad);
+        matriz[i].resize(cantidad);
     }
 
     for (int i = 0; i < cantidad; i++)
@@ -108,14 +110,13 @@ void try_queen(int *&queens, int col, int &solutions_count)
         }
 }
 
-int find_all_solutions(int *&queens)
+int find_all_solutions()
 {
     int num_solutions = 0;
     int col = 0;
 #pragma omp parallel
     {
         int *priv_queens = new int[N];
-        /* vector<int> priv_queens = queens; */
         int priv_solutions = 0;
 #pragma omp for nowait
         for (int i = 0; i < N; i++)
@@ -133,10 +134,43 @@ int find_all_solutions(int *&queens)
     return num_solutions;
 }
 
-
-
-vector<int> find_a_solution(vector<int> queens)
+void try_queen_one_solution(int *&queens, int col)
 {
+    if (found)
+        return;
+    if (col == N && !found)
+    {
+        /* print_solution(queens); */
+        found = true;
+        generate_dot(queens);
+        return;
+    }
+
+    for (int i = 0; i < N; i++)
+        if (is_safe(queens, i, col))
+        {
+            queens[col] = i;
+            try_queen_one_solution(queens, col + 1);
+        }
+}
+
+void find_a_solution()
+{
+    int col = 0;
+#pragma omp parallel
+    {
+        int *priv_queens = new int[N];
+#pragma omp for nowait
+        for (int i = 0; i < N; i++)
+        {
+            if (is_safe(priv_queens, i, col))
+            {
+                priv_queens[col] = i;
+                try_queen_one_solution(priv_queens, col + 1);
+            }
+        }
+        delete[] priv_queens;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -147,19 +181,17 @@ int main(int argc, char *argv[])
     int n = stoi(get_cmd_option(argv, argc + argv, "-N"));
     /* No error checking */
 
-    int *queens = new int[n];
     N = n;
     auto timer_start = chrono::high_resolution_clock::now();
 
     if (problemType == "all")
     {
-        int solutions_count = find_all_solutions(queens);
+        int solutions_count = find_all_solutions();
         cout << "Number of solutions: " << solutions_count << endl;
     }
     else if (problemType == "find")
     {
-        /* vector<int> solution = find_a_solution(queens);
-        print_solution(solution); */
+        find_a_solution();
     }
     else
     {
@@ -172,6 +204,5 @@ int main(int argc, char *argv[])
 
     cout << "Time: " << total_time.count() << "ms" << endl;
 
-    delete[] queens;
     return 0;
 }
