@@ -29,38 +29,32 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option)
 void generate_dot(int *&queens)
 {
     int cantidad = N;
-    vector<vector<int>> matriz(cantidad);
-    for (int i = 0; i < cantidad; ++i)
+    vector<vector<string>> matriz(cantidad);
+    for (int i = 0; i < cantidad; i++)
     {
         matriz[i].resize(cantidad);
     }
 
-    for (int i = 0; i < cantidad; ++i)
+    for (int i = 0; i < cantidad; i++)
     {
-        matriz[queens[i]][i] = 1;
-    }
-    string salida = "digraph structs {\n";
-
-    salida = salida + "    node [shape=record];\n     struct3 [label=\"{";
-
-    for (int i = 0; i < cantidad; ++i)
-    {
-        salida = salida + " { ";
-        for (int j = 0; j < (cantidad - 1); j++)
-        {
-            salida = salida + to_string(matriz[i][j]) + "|";
-        }
-        if (i == (cantidad - 1))
-        {
-            salida = salida + to_string(matriz[i][cantidad - 1]) + " } ";
-        }
-        else
-        {
-            salida = salida + to_string(matriz[i][cantidad - 1]) + " } |";
-        }
+        matriz[queens[i]][i] = "&#9813;";
     }
 
-    salida = salida + "}\"];\n }";
+    string salida = "digraph D {\n";
+
+    salida = salida + "    node [shape=plaintext]\n  some_node [ \n  label=< \n  <table border=\"0\" cellborder=\"1\" cellspacing=\"0\"> \n ";
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        salida = salida + " <tr>";
+        for (int j = 0; j < cantidad; j++)
+        {
+            salida = salida + "<td>"+matriz[i][j]+" </td>";
+        }
+				salida = salida + " </tr>\n";
+    }
+
+    salida = salida + "</table>>];\n }";
 
     ofstream file;
     file.open("graph.dot");
@@ -222,6 +216,8 @@ int main(int argc, char *argv[])
     chrono::duration<double, milli> total_time = timer_end - timer_start;
 
     cout << "Time: " << total_time.count() << "ms" << endl;
+
+		system("dot -Tps graph.dot -o graph.png");
 
     return 0;
 }
