@@ -116,12 +116,12 @@ size_t find_all_solutions()
     size_t num_solutions = 0;
     string solutions = "";
     int col = 0;
-#pragma omp parallel
+    #pragma omp parallel
     {
         int *priv_queens = new int[N];
         int priv_num_solutions = 0;
         string priv_solutions = "";
-#pragma omp for nowait
+        #pragma omp for nowait
         for (int i = 0; i < N; ++i)
         {
             if (is_safe(priv_queens, i, col))
@@ -130,7 +130,7 @@ size_t find_all_solutions()
                 try_queen(priv_queens, col + 1, priv_num_solutions, priv_solutions);
             }
         }
-#pragma omp atomic
+        #pragma omp atomic
         num_solutions += priv_num_solutions;
         solutions += priv_solutions;
         delete[] priv_queens;
@@ -170,10 +170,10 @@ void try_queen_one_solution(int *&queens, int col)
 void find_a_solution()
 {
     int col = 0;
-#pragma omp parallel
+    #pragma omp parallel
     {
         int *priv_queens = new int[N];
-#pragma omp for nowait
+        #pragma omp for nowait
         for (int i = 0; i < N; ++i)
         {
             if (is_safe(priv_queens, i, col))
@@ -216,8 +216,6 @@ int main(int argc, char *argv[])
     chrono::duration<double, milli> total_time = timer_end - timer_start;
 
     cout << "Time: " << total_time.count() << "ms" << endl;
-
-		system("dot -Tps graph.dot -o graph.png");
 
     return 0;
 }
