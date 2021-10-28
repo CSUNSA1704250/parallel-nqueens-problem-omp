@@ -1,0 +1,4 @@
+digraph structs {
+    node [shape=record];
+     struct3 [label="{ { 0|0|1|0 } | { 1|0|0|0 } | { 0|0|0|1 } | { 0|1|0|0 } }"];
+ }

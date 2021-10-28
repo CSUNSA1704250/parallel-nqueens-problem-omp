@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <omp.h>
 #include <chrono>
@@ -29,12 +30,12 @@ void generate_dot(int *&queens)
 {
     int cantidad = N;
     vector<vector<int>> matriz(cantidad);
-    for (int i = 0; i < cantidad; i++)
+    for (int i = 0; i < cantidad; ++i)
     {
         matriz[i].resize(cantidad);
     }
 
-    for (int i = 0; i < cantidad; i++)
+    for (int i = 0; i < cantidad; ++i)
     {
         matriz[queens[i]][i] = 1;
     }
@@ -42,7 +43,7 @@ void generate_dot(int *&queens)
 
     salida = salida + "    node [shape=record];\n     struct3 [label=\"{";
 
-    for (int i = 0; i < cantidad; i++)
+    for (int i = 0; i < cantidad; ++i)
     {
         salida = salida + " { ";
         for (int j = 0; j < (cantidad - 1); j++)
@@ -60,12 +61,16 @@ void generate_dot(int *&queens)
     }
 
     salida = salida + "}\"];\n }";
-    cout << salida << endl;
+
+    ofstream file;
+    file.open("graph.dot");
+    file << salida;
+    file.close();
 }
 
 bool is_safe(int *&queens, int &row, int &col)
 {
-    for (int i = 0; i < col; i++)
+    for (int i = 0; i < col; ++i)
     {
         if (queens[i] == row)
             return false;
@@ -79,7 +84,7 @@ bool is_safe(int *&queens, int &row, int &col)
 void print_solution(vector<int> &queens)
 {
     cout << "Solution:" << endl;
-    for (int i = 0; i < queens.size(); i++)
+    for (int i = 0; i < queens.size(); ++i)
     {
         for (int j = 0; j < queens.size(); j++)
             if (queens[i] == j)
@@ -92,45 +97,59 @@ void print_solution(vector<int> &queens)
     }
 }
 
-void try_queen(int *&queens, int col, int &solutions_count)
+void try_queen(int *&queens, int col, int &solutions_count, string &solutions)
 {
     if (col == N)
     {
         ++solutions_count;
-        /* print_solution(queens); */
-        generate_dot(queens);
+        string temp = "";
+        for (int i = 0; i < N; ++i)
+            temp += to_string(queens[i] + 1) + " ";
+        solutions += temp + "\n";
         return;
     }
 
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < N; ++i)
         if (is_safe(queens, i, col))
         {
             queens[col] = i;
-            try_queen(queens, col + 1, solutions_count);
+            try_queen(queens, col + 1, solutions_count, solutions);
         }
 }
 
-int find_all_solutions()
+size_t find_all_solutions()
 {
-    int num_solutions = 0;
+    size_t num_solutions = 0;
+    string solutions = "";
     int col = 0;
 #pragma omp parallel
     {
         int *priv_queens = new int[N];
-        int priv_solutions = 0;
+        int priv_num_solutions = 0;
+        string priv_solutions = "";
 #pragma omp for nowait
-        for (int i = 0; i < N; i++)
+        for (int i = 0; i < N; ++i)
         {
             if (is_safe(priv_queens, i, col))
             {
                 priv_queens[col] = i;
-                try_queen(priv_queens, col + 1, priv_solutions);
+                try_queen(priv_queens, col + 1, priv_num_solutions, priv_solutions);
             }
         }
 #pragma omp atomic
-        num_solutions += priv_solutions;
+        num_solutions += priv_num_solutions;
+        solutions += priv_solutions;
         delete[] priv_queens;
     }
+
+    string solutions_content = "#Solutions for " + to_string(N) + " queens\n";
+    solutions_content += to_string(num_solutions) + "\n";
+
+    ofstream solutions_file;
+    solutions_file.open("solutions.txt");
+    solutions_file << solutions_content;
+    solutions_file << solutions;
+    solutions_file.close();
     return num_solutions;
 }
 
@@ -146,7 +165,7 @@ void try_queen_one_solution(int *&queens, int col)
         return;
     }
 
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < N; ++i)
         if (is_safe(queens, i, col))
         {
             queens[col] = i;
@@ -161,7 +180,7 @@ void find_a_solution()
     {
         int *priv_queens = new int[N];
 #pragma omp for nowait
-        for (int i = 0; i < N; i++)
+        for (int i = 0; i < N; ++i)
         {
             if (is_safe(priv_queens, i, col))
             {
