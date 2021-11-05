@@ -49,9 +49,9 @@ void generate_dot(int *&queens)
         salida = salida + " <tr>";
         for (int j = 0; j < cantidad; j++)
         {
-            salida = salida + "<td>"+matriz[i][j]+" </td>";
+            salida = salida + "<td>" + matriz[i][j] + " </td>";
         }
-				salida = salida + " </tr>\n";
+        salida = salida + " </tr>\n";
     }
 
     salida = salida + "</table>>];\n }";
@@ -124,11 +124,8 @@ size_t find_all_solutions()
         #pragma omp for nowait
         for (int i = 0; i < N; ++i)
         {
-            if (is_safe(priv_queens, i, col))
-            {
-                priv_queens[col] = i;
-                try_queen(priv_queens, col + 1, priv_num_solutions, priv_solutions);
-            }
+            priv_queens[col] = i;
+            try_queen(priv_queens, col + 1, priv_num_solutions, priv_solutions);
         }
         #pragma omp atomic
         num_solutions += priv_num_solutions;
@@ -153,7 +150,6 @@ void try_queen_one_solution(int *&queens, int col)
         return;
     if (col == N && !found)
     {
-        /* print_solution(queens); */
         found = true;
         generate_dot(queens);
         return;
@@ -170,17 +166,14 @@ void try_queen_one_solution(int *&queens, int col)
 void find_a_solution()
 {
     int col = 0;
-    #pragma omp parallel
+#pragma omp parallel
     {
         int *priv_queens = new int[N];
-        #pragma omp for nowait
+#pragma omp for nowait
         for (int i = 0; i < N; ++i)
         {
-            if (is_safe(priv_queens, i, col))
-            {
-                priv_queens[col] = i;
-                try_queen_one_solution(priv_queens, col + 1);
-            }
+            priv_queens[col] = i;
+            try_queen_one_solution(priv_queens, col + 1);
         }
         delete[] priv_queens;
     }
@@ -188,14 +181,14 @@ void find_a_solution()
 
 int main(int argc, char *argv[])
 {
-    omp_set_num_threads(4);
 
     string problemType = get_cmd_option(argv, argc + argv, "-problemType");
     int n = stoi(get_cmd_option(argv, argc + argv, "-N"));
     /* No error checking */
 
     N = n;
-    auto timer_start = chrono::high_resolution_clock::now();
+    /* omp_set_num_threads(4); */
+    /* auto timer_start = chrono::high_resolution_clock::now(); */
 
     if (problemType == "all")
     {
@@ -212,10 +205,10 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    auto timer_end = chrono::high_resolution_clock::now();
+    /* auto timer_end = chrono::high_resolution_clock::now();
     chrono::duration<double, milli> total_time = timer_end - timer_start;
 
-    cout << "Time: " << total_time.count() << "ms" << endl;
+    cout << "Time: " << total_time.count() << "ms" << endl; */
 
     return 0;
 }
