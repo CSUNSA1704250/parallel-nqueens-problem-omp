@@ -8,11 +8,13 @@
 #include <bitset>
 
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
+#define ll long long
+#define ull unsigned long long
 
 using namespace std;
 
-int N;
-int all_queens_placed;
+ll N;
+ll all_queens_placed;
 list<vector<int>> solutions;
 
 
@@ -36,6 +38,7 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option)
 void generate_dot(vector<int> &queens)
 {
     ofstream file;
+    cout<<"found solution"<<endl;
     file.open("graph.dot");
     file << "digraph D{\n";
 
@@ -75,7 +78,7 @@ void print_solution(vector<int> &queens)
     }
 }
 
-void try_queen(vector<int> &queens, int rowmask, int ldmask, int rdmask, int col, int &solutions_count)
+void try_queen(vector<int> &queens, ll rowmask, ll ldmask, ll rdmask, int col, ull &solutions_count)
 {
     if ( rowmask == all_queens_placed )
     {
@@ -87,10 +90,10 @@ void try_queen(vector<int> &queens, int rowmask, int ldmask, int rdmask, int col
         return;
     }
 
-    int safe = all_queens_placed & (~(rowmask | ldmask | rdmask));
+    ll safe = all_queens_placed & (~(rowmask | ldmask | rdmask));
     while (safe)
     {
-        uint p = safe & (-safe);
+        ll p = safe & (-safe);
         queens[col] = LOG2(p);
         try_queen(queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1, solutions_count);
         safe = safe & (safe - 1);
@@ -104,15 +107,15 @@ size_t find_all_solutions()
     #pragma omp parallel
     #pragma omp single
     {
-        int safe = all_queens_placed;
+        ll safe = all_queens_placed;
         while (safe)
         {
-            uint p = safe & (-safe);
+            ll p = safe & (-safe);
             #pragma omp task
             {
                 vector<int> priv_queens(N);
-                int rowmask, ldmask, rdmask;
-                int priv_num_solutions = 0;
+                ll rowmask, ldmask, rdmask;
+                ull priv_num_solutions = 0;
                 priv_queens[0] = LOG2(p);
                 rowmask = ldmask = rdmask = 0;
                 try_queen(priv_queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1, priv_num_solutions);
@@ -139,7 +142,7 @@ size_t find_all_solutions()
     return num_solutions;
 }
 
-void try_queen_one_solution(vector<int> &queens, int rowmask, int ldmask, int rdmask, int col)
+void try_queen_one_solution(vector<int> &queens, ll rowmask, ll ldmask, ll rdmask, int col)
 {
     if (found)
         return;
@@ -150,10 +153,10 @@ void try_queen_one_solution(vector<int> &queens, int rowmask, int ldmask, int rd
         return;
     }
 
-    int safe = all_queens_placed & (~(rowmask | ldmask | rdmask));
+    ll safe = all_queens_placed & (~(rowmask | ldmask | rdmask));
     while (safe)
     {
-        uint p = safe & (-safe);
+        ll p = safe & (-safe);
         queens[col] = LOG2(p);
         try_queen_one_solution(queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1);
         safe = safe & (safe - 1);
@@ -167,15 +170,15 @@ void find_a_solution()
     #pragma omp parallel
     #pragma omp single
     {
-        int safe = all_queens_placed;
+        ll safe = all_queens_placed;
         while (safe)
         {
-            uint p = safe & (-safe);
+            ll p = safe & (-safe);
             #pragma omp task
             {
                 vector<int> priv_queens(N);
-                int rowmask, ldmask, rdmask;
-                int priv_num_solutions = 0;
+                ll rowmask, ldmask, rdmask;
+                ull priv_num_solutions = 0;
                 priv_queens[0] = LOG2(p);
                 rowmask = ldmask = rdmask = 0;
                 try_queen_one_solution(priv_queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1);
@@ -188,7 +191,7 @@ void find_a_solution()
 int main(int argc, char *argv[])
 {
     string problemType = get_cmd_option(argv, argc + argv, "-problemType");
-    int n = stoi(get_cmd_option(argv, argc + argv, "-N"));
+    ll n = stoi(get_cmd_option(argv, argc + argv, "-N"));
     /* No error checking */
 
     N = n;
