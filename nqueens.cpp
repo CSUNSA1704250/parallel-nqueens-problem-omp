@@ -4,10 +4,13 @@
 #include <omp.h>
 #include <chrono>
 #include <algorithm>
+#include <list>
+#include <bitset>
 
 using namespace std;
 
 int N;
+list<vector<int>> solutions;
 
 bool found = false;
 
@@ -26,39 +29,29 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option)
     return std::find(begin, end, option) != end;
 }
 
-void generate_dot(int *&queens)
+void generate_dot(vector<int> &queens)
 {
-    int cantidad = N;
-    vector<vector<string>> matriz(cantidad);
-    for (int i = 0; i < cantidad; i++)
-    {
-        matriz[i].resize(cantidad);
-    }
-
-    for (int i = 0; i < cantidad; i++)
-    {
-        matriz[queens[i]][i] = "&#9813;";
-    }
-
-    string salida = "digraph D {\n";
-
-    salida = salida + "    node [shape=plaintext]\n  some_node [ \n  label=< \n  <table border=\"0\" cellborder=\"1\" cellspacing=\"0\"> \n ";
-
-    for (int i = 0; i < cantidad; i++)
-    {
-        salida = salida + " <tr>";
-        for (int j = 0; j < cantidad; j++)
-        {
-            salida = salida + "<td>" + matriz[i][j] + " </td>";
-        }
-        salida = salida + " </tr>\n";
-    }
-
-    salida = salida + "</table>>];\n }";
-
     ofstream file;
     file.open("graph.dot");
-    file << salida;
+    file << "digraph D{\n";
+
+    file << "    node [shape=plaintext]\n  some_node [ \n  label=< \n  <table border=\"0\" cellborder=\"1\" cellspacing=\"0\"> \n ";
+
+    for (int i = 0; i < N; i++)
+    {
+        file << " <tr>";
+        for (int j = 0; j < N; j++)
+        {
+            file << "<td>";
+            if (i == queens[j])
+                file << "&#9813;";
+            file << "</td>";
+        }
+        file << " </tr>\n";
+    }
+
+    file << "</table>>];\n }";
+
     file.close();
 }
 
@@ -80,7 +73,7 @@ void print_solution(vector<int> &queens)
     cout << "Solution:" << endl;
     for (int i = 0; i < queens.size(); ++i)
     {
-        for (int j = 0; j < queens.size(); j++)
+        for (int j = 0; j < queens.size(); ++j)
             if (queens[i] == j)
                 cout << "x"
                      << " ";
@@ -91,60 +84,145 @@ void print_solution(vector<int> &queens)
     }
 }
 
-void try_queen(int *&queens, int col, int &solutions_count, string &solutions)
+void try_queen(vector<int> &queens, int col, int &solutions_count)
 {
     if (col == N)
     {
         ++solutions_count;
-        string temp = "";
-        for (int i = 0; i < N; ++i)
-            temp += to_string(queens[i] + 1) + " ";
-        solutions += temp + "\n";
+        #pragma critical
+        {
+            solutions.push_back(queens);
+        }
         return;
     }
 
+    bool safe;
     for (int i = 0; i < N; ++i)
-        if (is_safe(queens, i, col))
+    {
+        safe = true;
+        for (int j = 0; j < col; ++j)
+        {
+            if (queens[j] == i)
+            {
+                safe = false;
+                break;
+            }
+            if (abs(queens[j] - i) == col - j)
+            {
+                safe = false;
+                break;
+            }
+        }
+        if (safe)
         {
             queens[col] = i;
-            try_queen(queens, col + 1, solutions_count, solutions);
+            try_queen(queens, col + 1, solutions_count);
         }
+    }
+}
+
+void try_queen_bs(vector<int> &queens, bitset<40> &rows, bitset<40> &d1, bitset<40> &d2, int col, int &solutions_count)
+{
+    if (col == N)
+    {
+        ++solutions_count;
+        #pragma critical
+        {
+            solutions.push_back(queens);
+        }
+        return;
+    }
+
+    for (int r = 0; r < N; ++r)
+        if (!rows[r] && !d1[r - col + N - 1] && !d2[r + col])
+        {
+            queens[col] = r;
+            rows[r] = d1[r - col + N - 1] = d2[r + col] = 1;
+            try_queen_bs(queens, rows, d1, d2, col + 1, solutions_count);
+            rows[r] = d1[r - col + N - 1] = d2[r + col] = 0;
+        }
+    
 }
 
 size_t find_all_solutions()
 {
     size_t num_solutions = 0;
-    string solutions = "";
+    string solutions_txt = "";
     int col = 0;
     #pragma omp parallel
+    #pragma omp single
     {
-        int *priv_queens = new int[N];
-        int priv_num_solutions = 0;
-        string priv_solutions = "";
-        #pragma omp for nowait
         for (int i = 0; i < N; ++i)
         {
-            priv_queens[col] = i;
-            try_queen(priv_queens, col + 1, priv_num_solutions, priv_solutions);
+            #pragma omp task
+            {
+                vector<int> priv_queens(N);
+                int priv_num_solutions = 0;
+                priv_queens[col] = i;
+                try_queen(priv_queens, col + 1, priv_num_solutions);
+                
+                #pragma omp atomic
+                num_solutions += priv_num_solutions;
+            }
         }
-        #pragma omp atomic
-        num_solutions += priv_num_solutions;
-        solutions += priv_solutions;
-        delete[] priv_queens;
     }
-
-    string solutions_content = "#Solutions for " + to_string(N) + " queens\n";
-    solutions_content += to_string(num_solutions) + "\n";
 
     ofstream solutions_file;
     solutions_file.open("solutions.txt");
-    solutions_file << solutions_content;
-    solutions_file << solutions;
+
+    solutions_file << "#Solutions for " << N << " queens\n";
+    solutions_file << num_solutions << "\n";
+    for (auto &&i : solutions)
+    {
+        for (auto &&j : i)
+            solutions_file << j << " ";
+        solutions_file << "\n";
+    }
     solutions_file.close();
     return num_solutions;
 }
 
-void try_queen_one_solution(int *&queens, int col)
+size_t find_all_solutions_bs()
+{
+    size_t num_solutions = 0;
+    int col = 0;
+    #pragma omp parallel
+    #pragma omp single
+    {
+        for (int i = 0; i < N; ++i)
+        {
+            #pragma omp task
+            {
+                vector<int> priv_queens(N);
+                int priv_num_solutions = 0;
+                bitset<40> rows, d1, d2;
+
+                priv_queens[col] = i;
+                rows[i] = d1[i - col + N - 1] = d2[i + col] = 1;
+                try_queen_bs(priv_queens, rows, d1, d2, col + 1, priv_num_solutions);
+                
+                #pragma omp atomic
+                num_solutions += priv_num_solutions;
+            }
+        }
+    }
+
+    ofstream solutions_file;
+    solutions_file.open("solutions.txt");
+
+    solutions_file << "#Solutions for " << N << " queens\n";
+    solutions_file << num_solutions << "\n";
+    for (auto &&i : solutions)
+    {
+        for (auto &&j : i)
+            solutions_file << j << " ";
+        solutions_file << "\n";
+    }
+    solutions_file.close();
+    return num_solutions;
+}
+
+void try_queen_one_solution(vector<int> &queens, bitset<40> &rows, bitset<40> &d1, bitset<40> &d2, int col)
 {
     if (found)
         return;
@@ -155,27 +233,30 @@ void try_queen_one_solution(int *&queens, int col)
         return;
     }
 
-    for (int i = 0; i < N; ++i)
-        if (is_safe(queens, i, col))
+    for (int r = 0; r < N; ++r)
+        if (!rows[r] && !d1[r - col + N - 1] && !d2[r + col])
         {
-            queens[col] = i;
-            try_queen_one_solution(queens, col + 1);
+            queens[col] = r;
+            rows[r] = d1[r - col + N - 1] = d2[r + col] = 1;
+            try_queen_one_solution(queens, rows, d1, d2, col + 1);
+            rows[r] = d1[r - col + N - 1] = d2[r + col] = 0;
         }
 }
 
 void find_a_solution()
 {
     int col = 0;
-#pragma omp parallel
+    #pragma omp parallel
     {
-        int *priv_queens = new int[N];
-#pragma omp for nowait
+        vector<int> priv_queens(N);
+        bitset<40> rows, d1, d2;
+        #pragma omp for nowait
         for (int i = 0; i < N; ++i)
         {
             priv_queens[col] = i;
-            try_queen_one_solution(priv_queens, col + 1);
+            rows[i] = d1[i - col + N - 1] = d2[i + col] = 1;
+            try_queen_one_solution(priv_queens, rows, d1, d2, col + 1);
         }
-        delete[] priv_queens;
     }
 }
 
@@ -192,7 +273,7 @@ int main(int argc, char *argv[])
 
     if (problemType == "all")
     {
-        int solutions_count = find_all_solutions();
+        size_t solutions_count = find_all_solutions_bs();
         cout << "Number of solutions: " << solutions_count << endl;
     }
     else if (problemType == "find")
