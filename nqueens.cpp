@@ -7,10 +7,14 @@
 #include <list>
 #include <bitset>
 
+#define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
+
 using namespace std;
 
 int N;
+int all_queens_placed;
 list<vector<int>> solutions;
+
 
 bool found = false;
 
@@ -55,19 +59,6 @@ void generate_dot(vector<int> &queens)
     file.close();
 }
 
-bool is_safe(int *&queens, int &row, int &col)
-{
-    for (int i = 0; i < col; ++i)
-    {
-        if (queens[i] == row)
-            return false;
-        if (abs(queens[i] - row) == col - i)
-            return false;
-    }
-
-    return true;
-}
-
 void print_solution(vector<int> &queens)
 {
     cout << "Solution:" << endl;
@@ -84,9 +75,9 @@ void print_solution(vector<int> &queens)
     }
 }
 
-void try_queen(vector<int> &queens, int col, int &solutions_count)
+void try_queen(vector<int> &queens, int rowmask, int ldmask, int rdmask, int col, int &solutions_count)
 {
-    if (col == N)
+    if ( rowmask == all_queens_placed )
     {
         ++solutions_count;
         #pragma critical
@@ -96,74 +87,40 @@ void try_queen(vector<int> &queens, int col, int &solutions_count)
         return;
     }
 
-    bool safe;
-    for (int i = 0; i < N; ++i)
+    int safe = all_queens_placed & (~(rowmask | ldmask | rdmask));
+    while (safe)
     {
-        safe = true;
-        for (int j = 0; j < col; ++j)
-        {
-            if (queens[j] == i)
-            {
-                safe = false;
-                break;
-            }
-            if (abs(queens[j] - i) == col - j)
-            {
-                safe = false;
-                break;
-            }
-        }
-        if (safe)
-        {
-            queens[col] = i;
-            try_queen(queens, col + 1, solutions_count);
-        }
+        uint p = safe & (-safe);
+        queens[col] = LOG2(p);
+        try_queen(queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1, solutions_count);
+        safe = safe & (safe - 1);
     }
 }
-
-void try_queen_bs(vector<int> &queens, bitset<40> &rows, bitset<40> &d1, bitset<40> &d2, int col, int &solutions_count)
-{
-    if (col == N)
-    {
-        ++solutions_count;
-        #pragma critical
-        {
-            solutions.push_back(queens);
-        }
-        return;
-    }
-
-    for (int r = 0; r < N; ++r)
-        if (!rows[r] && !d1[r - col + N - 1] && !d2[r + col])
-        {
-            queens[col] = r;
-            rows[r] = d1[r - col + N - 1] = d2[r + col] = 1;
-            try_queen_bs(queens, rows, d1, d2, col + 1, solutions_count);
-            rows[r] = d1[r - col + N - 1] = d2[r + col] = 0;
-        }
-    
-}
-
 size_t find_all_solutions()
 {
     size_t num_solutions = 0;
-    string solutions_txt = "";
     int col = 0;
+
     #pragma omp parallel
     #pragma omp single
     {
-        for (int i = 0; i < N; ++i)
+        int safe = all_queens_placed;
+        while (safe)
         {
+            uint p = safe & (-safe);
             #pragma omp task
             {
                 vector<int> priv_queens(N);
+                int rowmask, ldmask, rdmask;
                 int priv_num_solutions = 0;
-                priv_queens[col] = i;
-                try_queen(priv_queens, col + 1, priv_num_solutions);
-                
+                priv_queens[0] = LOG2(p);
+                rowmask = ldmask = rdmask = 0;
+                try_queen(priv_queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1, priv_num_solutions);
+
                 #pragma omp atomic
                 num_solutions += priv_num_solutions;
             }
+            safe = safe & (safe - 1);
         }
     }
 
@@ -182,98 +139,66 @@ size_t find_all_solutions()
     return num_solutions;
 }
 
-size_t find_all_solutions_bs()
-{
-    size_t num_solutions = 0;
-    int col = 0;
-    #pragma omp parallel
-    #pragma omp single
-    {
-        for (int i = 0; i < N; ++i)
-        {
-            #pragma omp task
-            {
-                vector<int> priv_queens(N);
-                int priv_num_solutions = 0;
-                bitset<40> rows, d1, d2;
-
-                priv_queens[col] = i;
-                rows[i] = d1[i - col + N - 1] = d2[i + col] = 1;
-                try_queen_bs(priv_queens, rows, d1, d2, col + 1, priv_num_solutions);
-                
-                #pragma omp atomic
-                num_solutions += priv_num_solutions;
-            }
-        }
-    }
-
-    ofstream solutions_file;
-    solutions_file.open("solutions.txt");
-
-    solutions_file << "#Solutions for " << N << " queens\n";
-    solutions_file << num_solutions << "\n";
-    for (auto &&i : solutions)
-    {
-        for (auto &&j : i)
-            solutions_file << j << " ";
-        solutions_file << "\n";
-    }
-    solutions_file.close();
-    return num_solutions;
-}
-
-void try_queen_one_solution(vector<int> &queens, bitset<40> &rows, bitset<40> &d1, bitset<40> &d2, int col)
+void try_queen_one_solution(vector<int> &queens, int rowmask, int ldmask, int rdmask, int col)
 {
     if (found)
         return;
-    if (col == N && !found)
+    if ( rowmask == all_queens_placed && !found )
     {
         found = true;
         generate_dot(queens);
         return;
     }
 
-    for (int r = 0; r < N; ++r)
-        if (!rows[r] && !d1[r - col + N - 1] && !d2[r + col])
-        {
-            queens[col] = r;
-            rows[r] = d1[r - col + N - 1] = d2[r + col] = 1;
-            try_queen_one_solution(queens, rows, d1, d2, col + 1);
-            rows[r] = d1[r - col + N - 1] = d2[r + col] = 0;
-        }
+    int safe = all_queens_placed & (~(rowmask | ldmask | rdmask));
+    while (safe)
+    {
+        uint p = safe & (-safe);
+        queens[col] = LOG2(p);
+        try_queen_one_solution(queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1);
+        safe = safe & (safe - 1);
+    }
 }
 
 void find_a_solution()
 {
     int col = 0;
+
     #pragma omp parallel
+    #pragma omp single
     {
-        vector<int> priv_queens(N);
-        bitset<40> rows, d1, d2;
-        #pragma omp for nowait
-        for (int i = 0; i < N; ++i)
+        int safe = all_queens_placed;
+        while (safe)
         {
-            priv_queens[col] = i;
-            rows[i] = d1[i - col + N - 1] = d2[i + col] = 1;
-            try_queen_one_solution(priv_queens, rows, d1, d2, col + 1);
+            uint p = safe & (-safe);
+            #pragma omp task
+            {
+                vector<int> priv_queens(N);
+                int rowmask, ldmask, rdmask;
+                int priv_num_solutions = 0;
+                priv_queens[0] = LOG2(p);
+                rowmask = ldmask = rdmask = 0;
+                try_queen_one_solution(priv_queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1);
+            }
+            safe = safe & (safe - 1);
         }
     }
 }
 
 int main(int argc, char *argv[])
 {
-
     string problemType = get_cmd_option(argv, argc + argv, "-problemType");
     int n = stoi(get_cmd_option(argv, argc + argv, "-N"));
     /* No error checking */
 
     N = n;
+    all_queens_placed = (1 << N) - 1;
     /* omp_set_num_threads(4); */
     /* auto timer_start = chrono::high_resolution_clock::now(); */
 
     if (problemType == "all")
     {
-        size_t solutions_count = find_all_solutions_bs();
+        size_t solutions_count = find_all_solutions();
         cout << "Number of solutions: " << solutions_count << endl;
     }
     else if (problemType == "find")
