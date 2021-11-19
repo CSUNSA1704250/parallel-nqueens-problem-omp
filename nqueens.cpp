@@ -13,8 +13,8 @@
 
 using namespace std;
 
-ll N;
-ll all_queens_placed;
+long long N;
+long long all_queens_placed;
 list<vector<int>> solutions;
 
 
@@ -35,7 +35,7 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option)
     return std::find(begin, end, option) != end;
 }
 
-void generate_dot(vector<int> &queens)
+void generate_dot(vector<ll> &queens)
 {
     ofstream file;
     cout<<"found solution"<<endl;
@@ -142,7 +142,7 @@ size_t find_all_solutions()
     return num_solutions;
 }
 
-void try_queen_one_solution(vector<int> &queens, ll rowmask, ll ldmask, ll rdmask, int col)
+void try_queen_one_solution(vector<ll> &queens, ll rowmask, ll ldmask, ll rdmask, ll col)
 {
     if (found)
         return;
@@ -171,12 +171,13 @@ void find_a_solution()
     #pragma omp single
     {
         ll safe = all_queens_placed;
+
         while (safe)
         {
             ll p = safe & (-safe);
             #pragma omp task
             {
-                vector<int> priv_queens(N);
+                vector<ll> priv_queens(N);
                 ll rowmask, ldmask, rdmask;
                 ull priv_num_solutions = 0;
                 priv_queens[0] = LOG2(p);
@@ -191,7 +192,7 @@ void find_a_solution()
 int main(int argc, char *argv[])
 {
     string problemType = get_cmd_option(argv, argc + argv, "-problemType");
-    ll n = stoi(get_cmd_option(argv, argc + argv, "-N"));
+    long long n = stoll(get_cmd_option(argv, argc + argv, "-N"));
     /* No error checking */
 
     N = n;
