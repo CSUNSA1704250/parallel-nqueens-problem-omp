@@ -158,7 +158,7 @@ void try_queen_one_solution(vector<ll> &queens, ll rowmask, ll ldmask, ll rdmask
     {
         ll p = safe & (-safe);
         queens[col] = LOG2(p);
-        try_queen_one_solution(queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1);
+        try_queen_one_solution(queens, rowmask | p, (ldmask | p) << 1ULL, (rdmask | p) >> 1ULL, col + 1);
         safe = safe & (safe - 1);
     }
 }
@@ -182,7 +182,7 @@ void find_a_solution()
                 ull priv_num_solutions = 0;
                 priv_queens[0] = LOG2(p);
                 rowmask = ldmask = rdmask = 0;
-                try_queen_one_solution(priv_queens, rowmask | p, (ldmask | p) << 1, (rdmask | p) >> 1, col + 1);
+                try_queen_one_solution(priv_queens, rowmask | p, (ldmask | p) << 1ULL, (rdmask | p) >> 1ULL, col + 1);
             }
             safe = safe & (safe - 1);
         }
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
     /* No error checking */
 
     N = n;
-    all_queens_placed = (1 << N) - 1;
+    all_queens_placed = (1ULL << N) - 1;
     /* omp_set_num_threads(4); */
     /* auto timer_start = chrono::high_resolution_clock::now(); */
 
